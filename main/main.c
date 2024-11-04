@@ -240,9 +240,6 @@ void wifi_task(void *p) {
         printf("%s\n", request_new);
 
         TCP_CLIENT_T *state = tcp_client_init();
-        if (!state) {
-            return;
-        }
 
         if (state && tcp_client_open(state)) {
             printf("SOCKET: Conectado ao servidor\n");
