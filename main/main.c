@@ -201,29 +201,6 @@ void wifi_task(void *p) {
     // Contador
     int cnt = 0;
 
-    // Inicializa o módulo Wi-Fi
-    while (!cyw43_arch_init()) {
-        printf("WIFI: Falha na inicialização do Wi-Fi\n");
-    }
-    printf("WiFi: Inicializado com sucesso\n");
-
-    // Ativa o modo de estação (STA)
-    cyw43_arch_enable_sta_mode();
-
-    // Conecta ao Wi-Fi
-    int wifi_connected_status = 0;
-    while (!wifi_connected_status) {
-        printf("Conectando ao WiFI: %s / %s.\n", WIFI_SSID, WIFI_PASSWORD);
-        wifi_connected_status = cyw43_arch_wifi_connect_blocking(WIFI_SSID,
-                                                                 WIFI_PASSWORD,
-                                                                 CYW43_AUTH_WPA2_MIXED_PSK);
-    }
-    printf("WIFI: Conectado ao Wi-Fi com sucesso\n");
-
-    char sIP[] = "xxx.xxx.xxx.xxx";
-    strcpy(sIP, ip4addr_ntoa(netif_ip4_addr(netif_list)));
-    printf("WIFI: IP obtido do roteador %s\n", sIP);
-
     while (1) {
         char payload_content[64];
         int payload_length = 0;
@@ -269,6 +246,29 @@ void wifi_task(void *p) {
 
 int main() {
     stdio_init_all();
+
+    // Inicializa o módulo Wi-Fi
+    while (!cyw43_arch_init()) {
+        printf("WIFI: Falha na inicialização do Wi-Fi\n");
+    }
+    printf("WiFi: Inicializado com sucesso\n");
+
+    // Ativa o modo de estação (STA)
+    cyw43_arch_enable_sta_mode();
+
+    // Conecta ao Wi-Fi
+    int wifi_connected_status = 0;
+    while (!wifi_connected_status) {
+        printf("Conectando ao WiFI: %s / %s.\n", WIFI_SSID, WIFI_PASSWORD);
+        wifi_connected_status = cyw43_arch_wifi_connect_blocking(WIFI_SSID,
+                                                                 WIFI_PASSWORD,
+                                                                 CYW43_AUTH_WPA2_MIXED_PSK);
+    }
+    printf("WIFI: Conectado ao Wi-Fi com sucesso\n");
+
+    char sIP[] = "xxx.xxx.xxx.xxx";
+    strcpy(sIP, ip4addr_ntoa(netif_ip4_addr(netif_list)));
+    printf("WIFI: IP obtido do roteador %s\n", sIP);
 
     xTaskCreate(wifi_task, "Cliente Task", 4095, NULL, 1, NULL);
     vTaskStartScheduler();
