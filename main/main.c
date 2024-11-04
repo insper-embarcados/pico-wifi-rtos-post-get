@@ -13,13 +13,16 @@
 #include "lwip/pbuf.h"
 #include "lwip/tcp.h"
 
-#define WIFI_SSID "your-wifi"
-#define WIFI_PASSWORD "your-password"
-#define SERVER_IP "your-ip"
-#define SERVER_PORT 5000
+#define WIFI_SSID "SUA REDE"
+#define WIFI_PASSWORD "SUA SENHA"
+#define SERVER_IP "SEU.IP"
 
+#define TCP_PORT 5000
 #define DEBUG_printf printf
 #define BUF_SIZE 2048
+
+#define TEST_ITERATIONS 10
+#define POLL_TIME_S 5
 
 #if 0
 static void dump_bytes(const uint8_t *bptr, uint32_t len) {
@@ -90,7 +93,13 @@ static err_t tcp_client_sent(void *arg, struct tcp_pcb *tpcb, u16_t len) {
     state->sent_len += len;
 
     if (state->sent_len >= BUF_SIZE) {
-        tcp_result(arg, 0);
+
+        state->run_count++;
+        if (state->run_count >= TEST_ITERATIONS) {
+            tcp_result(arg, 0);
+            return ERR_OK;
+        }
+
         // We should receive a new buffer from the server
         state->buffer_len = 0;
         state->sent_len = 0;
@@ -159,7 +168,7 @@ err_t tcp_client_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
 
 static bool tcp_client_open(void *arg) {
     TCP_CLIENT_T *state = (TCP_CLIENT_T *)arg;
-    DEBUG_printf("Connecting to %s port %u\n", ip4addr_ntoa(&state->remote_addr), SERVER_PORT);
+    DEBUG_printf("Connecting to %s port %u\n", ip4addr_ntoa(&state->remote_addr), TCP_PORT);
     state->tcp_pcb = tcp_new_ip_type(IP_GET_TYPE(&state->remote_addr));
     if (!state->tcp_pcb) {
         DEBUG_printf("failed to create pcb\n");
@@ -167,7 +176,7 @@ static bool tcp_client_open(void *arg) {
     }
 
     tcp_arg(state->tcp_pcb, state);
-    tcp_poll(state->tcp_pcb, tcp_client_poll, 2);
+    tcp_poll(state->tcp_pcb, tcp_client_poll, POLL_TIME_S * 2);
     tcp_sent(state->tcp_pcb, tcp_client_sent);
     tcp_recv(state->tcp_pcb, tcp_client_recv);
     tcp_err(state->tcp_pcb, tcp_client_err);
@@ -179,7 +188,7 @@ static bool tcp_client_open(void *arg) {
     // these calls are a no-op and can be omitted, but it is a good practice to use them in
     // case you switch the cyw43_arch type later.
     cyw43_arch_lwip_begin();
-    err_t err = tcp_connect(state->tcp_pcb, &state->remote_addr, SERVER_PORT, tcp_client_connected);
+    err_t err = tcp_connect(state->tcp_pcb, &state->remote_addr, TCP_PORT, tcp_client_connected);
     cyw43_arch_lwip_end();
 
     return err == ERR_OK;
@@ -245,34 +254,41 @@ void wifi_task(void *p) {
 }
 
 int main() {
+    char sIP[] = "xxx.xxx.xxx.xxx";
+
     stdio_init_all();
 
     // Inicializa o módulo Wi-Fi
-    while (!cyw43_arch_init()) {
-        printf("WIFI: Falha na inicialização do Wi-Fi\n");
+    if (cyw43_arch_init()) {
+        printf("Falha na inicialização do Wi-Fi\n");
+        return -1;
     }
-    printf("WiFi: Inicializado com sucesso\n");
+    printf("Wi-Fi inicializado com sucesso\n");
 
     // Ativa o modo de estação (STA)
     cyw43_arch_enable_sta_mode();
 
-    // Conecta ao Wi-Fi
-    int wifi_connected_status = 0;
-    while (!wifi_connected_status) {
-        printf("Conectando ao WiFI: %s / %s.\n", WIFI_SSID, WIFI_PASSWORD);
-        wifi_connected_status = cyw43_arch_wifi_connect_blocking(WIFI_SSID,
-                                                                 WIFI_PASSWORD,
-                                                                 CYW43_AUTH_WPA2_MIXED_PSK);
+    // Tenta conectar ao Wi-Fi
+    int result = cyw43_arch_wifi_connect_blocking(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_MIXED_PSK);
+
+    // Verifica o resultado da conexão
+    if (result) {
+        printf("Conexão Wi-Fi falhou\n");
+        cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0); // Desliga o LED
+        return -1;
     }
-    printf("WIFI: Conectado ao Wi-Fi com sucesso\n");
 
-    char sIP[] = "xxx.xxx.xxx.xxx";
+    // Se conectado com sucesso, acende o LED
+    printf("Conectado ao Wi-Fi com sucesso\n");
+    cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1); // Acende o LED
     strcpy(sIP, ip4addr_ntoa(netif_ip4_addr(netif_list)));
-    printf("WIFI: IP obtido do roteador %s\n", sIP);
+    printf("Conectado, IP %s\n", sIP);
 
-    xTaskCreate(wifi_task, "Cliente Task", 4095, NULL, 1, NULL);
+    xTaskCreate(wifi_task, "wifi task", 4095, NULL, 1, NULL);
+
     vTaskStartScheduler();
 
+    // Mantém o programa rodando
     while (true)
         ;
 }
