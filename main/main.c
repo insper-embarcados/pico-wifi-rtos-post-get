@@ -197,13 +197,15 @@ static TCP_CLIENT_T *tcp_client_init(void) {
 }
 
 void wifi_task(void *p) {
-    char sIP[] = "xxx.xxx.xxx.xxx";
+
+    // Contador
+    int cnt = 0;
 
     // Inicializa o módulo Wi-Fi
     while (!cyw43_arch_init()) {
-        printf("Falha na inicialização do Wi-Fi\n");
+        printf("WIFI: Falha na inicialização do Wi-Fi\n");
     }
-    printf("Wi-Fi inicializado com sucesso\n");
+    printf("WiFi: Inicializado com sucesso\n");
 
     // Ativa o modo de estação (STA)
     cyw43_arch_enable_sta_mode();
@@ -216,48 +218,51 @@ void wifi_task(void *p) {
                                                                  WIFI_PASSWORD,
                                                                  CYW43_AUTH_WPA2_MIXED_PSK);
     }
-    printf("Conectado ao Wi-Fi com sucesso\n");
+    printf("WIFI: Conectado ao Wi-Fi com sucesso\n");
 
+    char sIP[] = "xxx.xxx.xxx.xxx";
     strcpy(sIP, ip4addr_ntoa(netif_ip4_addr(netif_list)));
-    printf("IP obtido do roteador %s\n", sIP);
+    printf("WIFI: IP obtido do roteador %s\n", sIP);
 
     while (1) {
-        char payload_content[] = "dado=2";
-        int payload_length = strlen(payload_content);
+        char payload_content[64];
+        int payload_length = 0;
+        payload_length = sprintf(payload_content, "dado=%d", cnt);
+
         const char *http_request = "POST /post_data HTTP/1.1\r\n"
                                    "Content-Type: application/x-www-form-urlencoded\r\n"
                                    "Content-Length: %d\r\n"
                                    "\r\n"
                                    "%s";
 
-        char request_new[strlen(http_request) + 1];
+        char request_new[255];
         sprintf(request_new, http_request, payload_length, payload_content);
-        printf("Requisição HTTP:\n");
         printf("%s\n", request_new);
 
         TCP_CLIENT_T *state = tcp_client_init();
         if (!state) {
             return;
         }
-        if (!tcp_client_open(state)) {
-            return;
-        }
 
         if (state && tcp_client_open(state)) {
-            printf("Conectado ao servidor\n");
+            printf("SOCKET: Conectado ao servidor\n");
             cyw43_arch_lwip_begin();
             int err = tcp_write(state->tcp_pcb, request_new, strlen(request_new), 0);
             cyw43_arch_lwip_end();
 
             if (err != ERR_OK) {
-                printf("Falha ao enviar dados\n");
+                printf("TCP: Falha ao enviar dados\n");
+                printf("TCP: Servidor está rodando? Porta e IP corretos?\n");
                 printf("\nerrno: %d \n", err);
+            } else {
+                printf("TCP: Dados enviados com sucesso\n");
+                cnt++;
             }
 
             vTaskDelay(pdMS_TO_TICKS(500));
         } else {
-            printf("Falha ao conectar ao servidor\n");
-            printf("Verifique IP, porta e rede wifi\n");
+            printf("SOCKET: Falha ao conectar ao servidor\n");
+            printf("SOCKET: Verifique IP, porta e rede wifi\n");
         }
 
         tcp_client_close(state);
