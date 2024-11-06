@@ -22,7 +22,7 @@ if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
 endif()
 
 add_subdirectory(freertos)
-add_subdirectory(main)
+add_subdirectory(main_post)
 add_subdirectory(main_get)
 
 
