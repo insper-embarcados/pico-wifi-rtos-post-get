@@ -25,5 +25,13 @@ def post_data():
     received_data = request.form.get("dado", "No data received")  # Access "dado" from the form data
     return "Data received", 200
 
+
+# Route to handle the GET request
+@app.route("/get_data", methods=["GET"])
+def get_data():
+    global received_data
+    received_data = request.args.get("dado", "No data received")  # Access "dado" from the query string
+    return "22", 200  # Return the value 22 as the response content
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
