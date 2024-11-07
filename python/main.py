@@ -4,6 +4,7 @@ app = Flask(__name__)
 
 # Variable to hold received data
 received_data = ""
+counter = 0
 
 # Route to handle the index page
 @app.route("/")
@@ -27,11 +28,19 @@ def post_data():
 
 
 # Route to handle the GET request
+# rota que retorna uma string
 @app.route("/get_data", methods=["GET"])
 def get_data():
     global received_data
     received_data = request.args.get("dado", "No data received")  # Access "dado" from the query string
     return "22", 200  # Return the value 22 as the response content
+
+# rota que retorna um Objeto JSON
+@app.route("/get_counter", methods=["GET"])
+def get_counter():
+    global counter
+    counter += 1
+    return {"counter": counter}, 200
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

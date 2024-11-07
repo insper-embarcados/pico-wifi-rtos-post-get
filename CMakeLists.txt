@@ -24,5 +24,5 @@ endif()
 add_subdirectory(freertos)
 add_subdirectory(main_post)
 add_subdirectory(main_get)
-
+add_subdirectory(main_api)
 
